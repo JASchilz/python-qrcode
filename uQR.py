@@ -1,4 +1,4 @@
-import re
+import ure as re
 
 """
 Exceptions
@@ -280,9 +280,11 @@ class Polynomial:
                 break
         else:
             offset += 1
-        self.num = bytearray(num[offset:])
-        self.num.extend([0] * shift)
-        # self.num = num[offset:] + [0] * shift
+        if isinstance(num[offset:], bytes):
+            shift_chunk = b'\x00'*shift
+        elif isinstance(num[offset:], list):
+            shift_chunk = [0]*shift
+        self.num = bytearray(num[offset:]+shift_chunk)
 
     def __getitem__(self, index):
         return self.num[index]
@@ -387,10 +389,8 @@ MODE_SIZE_LARGE = {
 }
 
 ALPHA_NUM = b'0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:'
-ESCAPED_ALPHA_NUM = b'0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ\\ \\$\\%\\*\\+\\-\\.\\/\\:'
 
-RE_ALPHA_NUM = re.compile(b'^[' + ESCAPED_ALPHA_NUM + b']*\Z')
-
+RE_ALPHA_NUM = re.compile(b'^[' + ALPHA_NUM + b']*')
 # The number of bits for numeric delimited data lengths.
 NUMBER_LENGTH = {3: 10, 2: 7, 1: 4}
 
@@ -709,12 +709,10 @@ def optimal_data_chunks(data, minimum=4):
     :param minimum: The minimum number of bytes in a row to split as a chunk.
     """
     data = to_bytestring(data)
-    re_repeat = (
-        b'{' + str(minimum).encode('ascii') + b',}')
-    num_pattern = re.compile(b'\d' + re_repeat)
+    num_pattern = re.compile(b'\d?'*minimum)
     num_bits = _optimal_split(data, num_pattern)
-    alpha_pattern = re.compile(
-        b'[' + ESCAPED_ALPHA_NUM + b']' + re_repeat)
+    alpha_pattern = re.compile( b"("+
+        (b'[' + ALPHA_NUM + b']?') * minimum + b")")
     for is_num, chunk in num_bits:
         if is_num:
             yield QRData(chunk, mode=MODE_NUMBER, check_data=False)
@@ -733,7 +731,10 @@ def _optimal_split(data, pattern):
         match = pattern.search(data)
         if not match:
             break
-        start, end = match.start(), match.end()
+        matched = match.group(0)
+        start = data.rfind(matched)
+        end = len(matched) + start
+        #start, end = match.start(), match.end()
         if start:
             yield False, data[:start]
         yield True, data[start:end]
@@ -758,7 +759,8 @@ def optimal_mode(data):
     """
     if data.isdigit():
         return MODE_NUMBER
-    if RE_ALPHA_NUM.match(data):
+
+    if all(b in ALPHA_NUM for b in data):
         return MODE_ALPHA_NUM
     return MODE_8BIT_BYTE
 
@@ -960,7 +962,7 @@ Formerly in main.py
 def make(data=None, **kwargs):
     qr = QRCode(**kwargs)
     qr.add_data(data)
-    return qr.make_image()
+    return qr.get_matrix()
 
 
 def _check_version(version):
@@ -1284,3 +1286,10 @@ class QRCode:
         code += [[False]*width] * self.border
 
         return code
+
+    def render_matrix(self):
+        out = ""
+        for row in self.get_matrix():
+            out += "".join([{False: " ", True: "█"}[x] if x in (False, True) else "╳" for x in row])
+            out += "\n"
+        return out
