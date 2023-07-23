@@ -388,7 +388,7 @@ MODE_SIZE_LARGE = {
     MODE_KANJI: 12,
 }
 
-ALPHA_NUM = b'0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:'
+ALPHA_NUM = b'0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:;#&{}[](),=\'"\\'
 
 RE_ALPHA_NUM = re.compile(b'^[' + ALPHA_NUM + b']*')
 # The number of bits for numeric delimited data lengths.
