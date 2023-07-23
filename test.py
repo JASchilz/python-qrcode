@@ -34,3 +34,11 @@ class TestMatrixCreation(unittest.TestCase):
 
             # The two rows from the two libraries should be identical
             self.assertEqual(len(micro_row), len(macro_row))
+
+class TestWifiCreation(unittest.TestCase):
+    def test_render_matrix(self):
+        micro_qr = MicroQRCode()
+        ssid, password = 'test', 'test'
+        micro_qr.add_data('WIFI:S:{};T:WPA;P:{};H:false;;'.format(ssid, password))
+        matrix = micro_qr.render_matrix()
+        self.assertGreater(len(matrix), 0)
